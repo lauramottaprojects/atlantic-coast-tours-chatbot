@@ -1,4 +1,4 @@
-import * as readline from "node:readline/promises";
+import { createInterface } from "node:readline";
 import { stdin as input, stdout as output } from "node:process";
 import { PERSONAS, DEFAULT_PERSONA_ID } from "./lib/personas.mjs";
 import { fetchTours, isPlausiblePrice } from "./lib/tours.mjs";
@@ -16,6 +16,27 @@ const C = {
   cyan: "\x1b[96m",
 };
 
+const rl = createInterface({ input, output, terminal: false });
+const lineQueue = [];
+const waiters = [];
+let closed = false;
+rl.on("line", (line) => {
+  const waiter = waiters.shift();
+  if (waiter) waiter(line);
+  else lineQueue.push(line);
+});
+rl.on("close", () => {
+  closed = true;
+  while (waiters.length) waiters.shift()(null);
+});
+
+function readLine(prompt) {
+  if (lineQueue.length) return Promise.resolve(lineQueue.shift());
+  if (prompt) output.write(prompt);
+  if (closed) return Promise.resolve(null);
+  return new Promise((resolve) => waiters.push(resolve));
+}
+
 let current = null;
 
 function setPersona(id) {
@@ -23,34 +44,27 @@ function setPersona(id) {
 }
 
 function banner() {
-  console.log(
-    `${C.bold}${C.teal}~ Atlantic Coast Tours ${C.reset}${C.dim}· Wild Atlantic Way · Galway${C.reset}`
-  );
+  console.log(`${C.bold}${C.teal}~ Atlantic Coast Tours ${C.reset}${C.dim}· Wild Atlantic Way · Galway${C.reset}`);
   console.log(`${C.dim}Gemini 3.1 Flash-Lite · live data from Google Sheets · proxied via ${API_BASE}${C.reset}`);
-  console.log(
-    `${C.dim}Commands: /persona <name>  /tours  /reset  /help  /quit${C.reset}`
-  );
+  console.log(`${C.dim}Commands: /persona <name>  /tours  /reset  /help  /quit${C.reset}`);
   console.log("");
 }
 
-function choosePersonaLine() {
-  const rl = readline.createInterface({ input, output });
+function pickQuestions() {
   console.log(`${C.bold}Choose a team member to talk to:${C.reset}`);
   PERSONAS.forEach((p, i) => {
     console.log(`  ${C.yellow}${i + 1}${C.reset}. ${C.bold}${p.name}${C.reset} ${C.dim}(${p.handle})${C.reset} ${C.dim}· ${p.role}${C.reset}`);
   });
   console.log(`  ${C.yellow}0${C.reset}. ${C.bold}Default — Fiona${C.reset} ${C.dim}(most common starting point)${C.reset}`);
   console.log("");
-  return rl;
 }
 
 async function main() {
   banner();
 
-  const pick = choosePersonaLine();
-  const answer = (await pick.question(`${C.bold}Persona [${PERSONAS[0].name}]:${C.reset} `)).trim();
-  pick.close();
-  const idx = parseInt(answer, 10);
+  pickQuestions();
+  const answer = (await readLine(`${C.bold}Persona [${PERSONAS[0].name}]:${C.reset} `)) ?? "";
+  const idx = parseInt(answer.trim(), 10);
   if (Number.isFinite(idx) && idx > 0 && idx <= PERSONAS.length) {
     setPersona(PERSONAS[idx - 1].id);
   } else {
@@ -62,8 +76,6 @@ async function main() {
   console.log(`${C.green}${current.name}${C.reset} ${C.dim}${current.handle}${C.reset}`);
   console.log(`${C.green}${current.openingLine}${C.reset}`);
   console.log(`${C.dim}──────────────────────────────────────────${C.reset}`);
-
-  const rl = readline.createInterface({ input, output });
 
   async function handleCommand(cmd, arg) {
     switch (cmd) {
@@ -163,7 +175,7 @@ async function main() {
         if (done) break;
         const chunk = decoder.decode(value, { stream: true });
         if (chunk) {
-          process.stdout.write(`${C.green}${chunk}${C.reset}`);
+          process.stdout.write(chunk);
           reply += chunk;
         }
       }
@@ -184,16 +196,22 @@ async function main() {
   }
 
   for (;;) {
-    const line = (await rl.question(`${C.cyan}you >${C.reset} `)).trim();
-    if (!line) continue;
-    if (line.startsWith("/")) {
-      const [cmd, ...rest] = line.split(/\s+/);
+    const line = (await readLine(`${C.cyan}you >${C.reset} `)) ?? "";
+    const trimmed = line.trim();
+    if (!trimmed) {
+      if (line === null) break;
+      continue;
+    }
+    if (trimmed.startsWith("/")) {
+      const [cmd, ...rest] = trimmed.split(/\s+/);
       await handleCommand(cmd, rest.join(" "));
     } else {
-      await send(line);
+      await send(trimmed);
     }
     console.log(`${C.dim}──────────────────────────────────────────${C.reset}`);
   }
+  if (!closed) rl.close();
+  console.log(`${C.green}Bye! Slán go fóill.${C.reset}`);
 }
 
 main().catch((err) => {
