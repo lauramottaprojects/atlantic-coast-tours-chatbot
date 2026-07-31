@@ -232,6 +232,7 @@
     </div>
     <div class="spacer"></div>
     <span class="live-badge" title="Tour data is loaded live from the Google Sheets database"><span class="dot"></span><span id="liveLabel">Live from Google Sheets</span></span>
+    <span class="live-badge" id="weatherBadge" title="Live weather forecasts via Open-Meteo"><span class="dot"></span>Weather · Open-Meteo</span>
     <button id="themeToggle" class="icon-btn" aria-label="Toggle dark / light mode">Dark</button>
     <button id="bookBtn" class="cta-btn">Book Now</button>
   </header>
@@ -269,7 +270,7 @@
   </main>
 
   <footer>
-    Demo AI assistant — Atlantic Coast Tours · Live data from Google Sheets · Powered by Gemini 3.1 Flash-Lite via a Vercel proxy · Please confirm bookings with the Galway office.
+    Demo AI assistant — Atlantic Coast Tours · Live tour data from Google Sheets · Live weather from Open-Meteo · Powered by Gemini 3.1 Flash-Lite via a Vercel proxy · Please confirm bookings with the Galway office.
   </footer>
 </div>
 
@@ -323,6 +324,27 @@ applyTheme((() => {
 const agent = AGENT;
 let history = [];
 let streaming = false;
+let userLocation = null;
+
+function enableLocation() {
+  if (!("geolocation" in navigator)) return;
+  try {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        userLocation = {
+          lat: Number(pos.coords.latitude.toFixed(4)),
+          lon: Number(pos.coords.longitude.toFixed(4)),
+        };
+        addSysNote(`📍 Using your device location (${userLocation.lat}, ${userLocation.lon}) as the default for weather questions.`);
+        $("weatherBadge").textContent = "Weather · using your location";
+      },
+      () => {},
+      { timeout: 8000, maximumAge: 600000 }
+    );
+  } catch {
+    /* geolocation unavailable (e.g. test env) */
+  }
+}
 
 function addSysNote(text) {
   const div = document.createElement("div");
@@ -425,6 +447,7 @@ async function sendMessage(text) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message,
+        ...(userLocation ? { location: userLocation } : {}),
         history: history.slice(0, -1)
       })
     });
@@ -623,10 +646,11 @@ function renderTours() {
 tourSearch.addEventListener("input", () => { searchTerm = tourSearch.value; renderTours(); });
 
 /* ── Init ─────────────────────────────────────────────── */
-addSysNote("Welcome to Atlantic Coast Tours. I'm Laura, your virtual assistant — bookings, tour advice, accessibility, sustainability and custom trips are all covered here. Tour data below is loaded live from the Google Sheets database.");
+addSysNote("Welcome to Atlantic Coast Tours. I'm Laura, your virtual assistant — bookings, tour advice, accessibility, sustainability, custom trips and live weather are all covered here. Tour data below is loaded live from the Google Sheets database.");
 addMessage("assistant", agent.opening);
 history = [{ role: "assistant", content: agent.opening }];
 loadTours();
+enableLocation();
 </script>
 </body>
 </html>
