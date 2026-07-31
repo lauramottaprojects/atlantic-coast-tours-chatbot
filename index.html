@@ -263,7 +263,7 @@
 
       <form class="composer" id="chatForm">
         <label class="sr-only" for="chatInput">Your message</label>
-        <input id="chatInput" type="text" placeholder="Ask about tours, booking, weather, accessibility…" autocomplete="off" />
+        <input id="chatInput" type="text" placeholder="Ask about tours, booking, accessibility…" autocomplete="off" />
         <button type="submit" id="sendBtn">Send</button>
       </form>
     </section>
@@ -335,8 +335,6 @@ function enableLocation() {
           lat: Number(pos.coords.latitude.toFixed(4)),
           lon: Number(pos.coords.longitude.toFixed(4)),
         };
-        addSysNote(`📍 Using your device location (${userLocation.lat}, ${userLocation.lon}) as the default for weather questions.`);
-        $("weatherBadge").textContent = "Weather · using your location";
       },
       () => {},
       { timeout: 8000, maximumAge: 600000 }
