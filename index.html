@@ -142,19 +142,18 @@
 
   /* ── Chat panel ─────────────────────────────────── */
   .chat-panel { display: flex; flex-direction: column; min-height: 0; background: var(--bg); }
-  .persona-tabs { display: flex; gap: 6px; padding: 12px 16px 8px; flex-wrap: wrap; }
-  .p-tab {
-    display: inline-flex; align-items: center; gap: 7px;
-    background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
-    padding: 5px 12px 5px 6px; font-size: 0.78rem; color: var(--text-muted); transition: 0.15s;
+  .chat-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--border);
   }
-  .p-tab .avatar {
-    width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
-    font-size: 0.7rem; font-weight: 700; color: #fff; background: var(--tab-color);
+  .chat-head .avatar {
+    width: 36px; height: 36px; border-radius: 50%; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0.9rem; font-weight: 700; color: #fff; background: var(--primary);
   }
-  .p-tab.active { border-color: var(--tab-color); color: var(--text); font-weight: 700; box-shadow: 0 0 0 2px color-mix(in srgb, var(--tab-color) 30%, transparent); }
-  .p-tab .handle { color: var(--text-muted); font-weight: 400; }
-  .p-tab.active .handle { color: var(--tab-color); }
+  .chat-head .name { font-weight: 700; font-size: 0.92rem; line-height: 1.2; }
+  .chat-head .status { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--text-muted); }
+  .chat-head .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
 
   .chat-log {
     flex: 1; overflow-y: auto; padding: 10px 16px 16px;
@@ -249,7 +248,13 @@
     </aside>
 
     <section class="chat-panel" aria-label="Chat">
-      <div class="persona-tabs" id="personaTabs" role="tablist" aria-label="Choose who to talk to"></div>
+      <div class="chat-head">
+        <span class="avatar">L</span>
+        <div>
+          <div class="name">Laura</div>
+          <div class="status"><span class="dot"></span> Virtual Assistant · online</div>
+        </div>
+      </div>
 
       <div class="chat-log" id="chatLog" role="log" aria-live="polite"></div>
 
@@ -277,14 +282,13 @@ const CONFIG = Object.assign({
   sheetUrl: "https://docs.google.com/spreadsheets/d/1balBGf8QhZ5dc-RCCAPt2kcrcf6m_YRh0HL_r8bBtJw/export?format=csv&gid=120683740"
 }, window.ATLANTIC_CONFIG || {});
 
-const PERSONAS = [
-  { id: "unified", name: "Atlantic Coast Tours", short: "Team", handle: "@ACTTeam", role: "All departments, one chat", color: "#0E6E7C", opening: "Hi, I'm the Atlantic Coast Tours concierge — bookings, tour advice, accessibility, sustainability and custom trips are all covered from here. What can I help you with?" },
-  { id: "fiona",  name: "Fiona",   handle: "@BookingFiona",    role: "Reservations & Booking",   color: "#0E6E7C", opening: "Hi, I'm Fiona — let's get your Wild Atlantic Way adventure booked. Which tour are you interested in, and how many travelers?" },
-  { id: "cormac", name: "Cormac",  handle: "@GuideCormac",     role: "Local Guide & Itinerary",  color: "#C1622B", opening: "Ah, welcome! I'm Cormac — ask me anything about the Cliffs of Moher, the Aran Islands, or where to find the best pint of Guinness along the way." },
-  { id: "niamh",  name: "Niamh",   handle: "@SupportNiamh",    role: "Support & Logistics",      color: "#7A8A3F", opening: "Hi, Niamh here — happy to help sort out any logistics or accessibility needs so your trip runs smoothly. What can I help with?" },
-  { id: "aoibhe", name: "Aoibhe",  handle: "@EcoAoibhe",       role: "Sustainability Advisor",   color: "#C9A227", opening: "Hey, I'm Aoibhe — I look after the sustainable side of things at Atlantic Coast Tours. Curious how your trip supports local communities and the environment?" },
-  { id: "declan", name: "Declan",  handle: "@ConciergeDeclan", role: "Custom & Corporate Trips", color: "#8A5A83", opening: "Good day, I'm Declan — let's design a trip that's tailored entirely to you. What's the occasion or group profile you have in mind?" }
-];
+const AGENT = {
+  id: "laura",
+  name: "Laura",
+  handle: "@Laura",
+  role: "Virtual Assistant",
+  opening: "Hi, I'm Laura, your virtual assistant at Atlantic Coast Tours — bookings, tour advice, accessibility, sustainability and custom trips are all covered from here. What can I help you with?"
+};
 
 const SUGGESTIONS = [
   "What's included on the Cliffs of Moher walk?",
@@ -299,7 +303,7 @@ const $ = (id) => document.getElementById(id);
 const themeToggle = $("themeToggle"), chatLog = $("chatLog"), chatForm = $("chatForm"),
       chatInput = $("chatInput"), sendBtn = $("sendBtn"), tourList = $("tourList"),
       tourSearch = $("tourSearch"), tourChips = $("tourChips"), tourCount = $("tourCount"),
-      personaTabs = $("personaTabs"), dataFoot = $("dataFoot"), liveLabel = $("liveLabel");
+      dataFoot = $("dataFoot"), liveLabel = $("liveLabel");
 
 /* ── Theme ────────────────────────────────────────────── */
 function applyTheme(theme) {
@@ -316,34 +320,9 @@ applyTheme((() => {
 })());
 
 /* ── Chat state ───────────────────────────────────────── */
-let persona = PERSONAS[0];
+const agent = AGENT;
 let history = [];
 let streaming = false;
-
-function switchPersona(id, note) {
-  persona = PERSONAS.find((p) => p.id === id) || PERSONAS[0];
-  history = [{ role: "assistant", content: persona.opening }];
-  renderPersonaTabs();
-  chatLog.innerHTML = "";
-  addSysNote(note || `Now chatting with ${persona.name} ${persona.handle} — ${persona.role}.`);
-  addMessage("assistant", persona.opening, persona);
-  chatInput.focus();
-}
-
-function renderPersonaTabs() {
-  personaTabs.innerHTML = "";
-  PERSONAS.forEach((p) => {
-    const btn = document.createElement("button");
-    btn.className = "p-tab" + (p.id === persona.id ? " active" : "");
-    btn.style.setProperty("--tab-color", p.color);
-    btn.setAttribute("role", "tab");
-    btn.setAttribute("aria-selected", p.id === persona.id);
-    btn.title = p.name + " " + p.handle + " — " + p.role;
-    btn.innerHTML = `<span class="avatar">${(p.short || p.name)[0]}</span>${p.short || p.name} <span class="handle">${p.handle}</span>`;
-    btn.addEventListener("click", () => switchPersona(p.id));
-    personaTabs.appendChild(btn);
-  });
-}
 
 function addSysNote(text) {
   const div = document.createElement("div");
@@ -352,18 +331,18 @@ function addSysNote(text) {
   chatLog.appendChild(div);
 }
 
-function addMessage(role, text, who) {
+function addMessage(role, text) {
   const wrap = document.createElement("div");
   wrap.className = "msg " + role;
   const avatar = document.createElement("span");
   avatar.className = "avatar";
-  avatar.textContent = role === "assistant" ? (who ? who.name[0] : persona.name[0]) : "You";
+  avatar.textContent = role === "assistant" ? agent.name[0] : "You";
   const bubble = document.createElement("div");
   bubble.className = "bubble";
   if (role === "assistant") {
     const whoLine = document.createElement("div");
     whoLine.className = "who";
-    whoLine.textContent = (who ? who.name : persona.name) + " " + (who ? who.handle : persona.handle);
+    whoLine.textContent = agent.name;
     bubble.appendChild(whoLine);
   }
   const body = document.createElement("div");
@@ -384,7 +363,7 @@ function showTyping() {
   wrap.id = "typingMsg";
   const avatar = document.createElement("span");
   avatar.className = "avatar";
-  avatar.textContent = persona.name[0];
+  avatar.textContent = agent.name[0];
   const bubble = document.createElement("div");
   bubble.className = "bubble";
   bubble.innerHTML = `<div class="typing" aria-label="typing"><span></span><span></span><span></span></div>`;
@@ -433,7 +412,7 @@ async function sendMessage(text) {
 
   chatInput.value = "";
   addMessage("user", message);
-  const ai = addMessage("assistant", "", persona);
+  const ai = addMessage("assistant", "");
   streaming = true;
   sendBtn.disabled = true;
 
@@ -446,7 +425,6 @@ async function sendMessage(text) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message,
-        persona: persona.id,
         history: history.slice(0, -1)
       })
     });
@@ -645,10 +623,9 @@ function renderTours() {
 tourSearch.addEventListener("input", () => { searchTerm = tourSearch.value; renderTours(); });
 
 /* ── Init ─────────────────────────────────────────────── */
-renderPersonaTabs();
-addSysNote(`Welcome to Atlantic Coast Tours. The whole team is here in one chat — bookings, tour advice, accessibility, sustainability and custom trips. Fancy a specialist? Use the tabs on the right. Tour data below is loaded live from the Google Sheets database.`);
-addMessage("assistant", persona.opening, persona);
-history = [{ role: "assistant", content: persona.opening }];
+addSysNote("Welcome to Atlantic Coast Tours. I'm Laura, your virtual assistant — bookings, tour advice, accessibility, sustainability and custom trips are all covered here. Tour data below is loaded live from the Google Sheets database.");
+addMessage("assistant", agent.opening);
+history = [{ role: "assistant", content: agent.opening }];
 loadTours();
 </script>
 </body>
