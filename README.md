@@ -6,7 +6,8 @@ A customer engagement chatbot for **Atlantic Coast Tours** (Galway, Ireland), bu
 - **Terminal client:** `chat.mjs` — the same chat from the command line.
 - **Backend:** a Vercel serverless function (`api/chat.mjs`) that proxies Gemini **3.1 Flash-Lite** calls. The Gemini API key lives only in a Vercel environment variable — never in the browser or the repo.
 - **Live data:** tours are read **live from a Google Sheets database** (CSV export) on every load — no snapshot, no manual sync.
-- **Live weather:** the assistant answers weather questions with **real-time forecasts from Open-Meteo** — "how's the weather in Dingle this weekend?" works for any place, and if you allow browser geolocation it uses your location for "here" / "near me" questions.
+- **Live weather:** the assistant answers weather questions with **real-time forecasts from Open-Meteo** — "how's the weather in Dingle this weekend?" works for any place, and if no place is named the forecast defaults to **Galway**, where the office is.
+- **Booking confirmations:** whenever a booking is being confirmed, Laura always asks for a **contact detail** (email address or mobile phone number) before finalising it.
 
 ## Live URLs
 
@@ -38,7 +39,7 @@ Laura has a **`get_weather` tool** backed by [Open-Meteo](https://open-meteo.com
 - **Geocoding** — any city/town name ("Dingle", "Galway", "Clifden") is resolved via `geocoding-api.open-meteo.com`.
 - **Forecast** — current conditions + a 7-day daily forecast from `api.open-meteo.com` (temperature, weather code, rain probability, wind).
 - **Gemini function calling** — the model decides when to call the tool; the backend runs it, feeds the live data back, and streams Laura's answer. She never invents weather.
-- **Device location default** — if the browser shares its location (`navigator.geolocation`), it is sent with every request and Laura uses it when you ask about "here" / "my location". If you decline, she just geocodes whatever place you name.
+- **Galway default** — the frontend never asks for your location. If you ask about the weather without naming a place (e.g. "what's the weather like?"), the tool defaults to Galway, where the office is, and Laura answers naturally ("Our office is in Galway, so the weather here…").
 
 ## Chat API
 
@@ -51,7 +52,7 @@ Laura has a **`get_weather` tool** backed by [Open-Meteo](https://open-meteo.com
 }
 ```
 
-Optional: `"location": { "lat": 53.2707, "lon": -9.0568 }` — a device geolocation to use as the default for "here" weather questions.
+Optional (backwards-compatible): `"location": { "lat": 53.2707, "lon": -9.0568 }` — if a client sends device coordinates they are used for "here" / "nearby" weather questions. Otherwise weather asked without a place defaults to Galway.
 
 The assistant is always **Laura** — no persona field needed (an old `persona` field is ignored for backwards compatibility).
 

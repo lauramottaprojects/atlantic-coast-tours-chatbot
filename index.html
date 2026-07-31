@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Atlantic Coast Tours — Customer Chatbot</title>
-<meta name="description" content="Talk to the Atlantic Coast Tours team — live tour data from Google Sheets, powered by Gemini." />
+<meta name="description" content="Talk to the Atlantic Coast Tours team — live tour data and weather, powered by Gemini." />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌊</text></svg>" />
 <style>
   :root {
@@ -258,7 +258,7 @@
   </main>
 
   <footer>
-    Demo AI assistant — Atlantic Coast Tours · Live tour data from Google Sheets · Live weather from Open-Meteo · Powered by Gemini 3.1 Flash-Lite via a Vercel proxy · Please confirm bookings with the Galway office.
+    Demo AI assistant — Atlantic Coast Tours · Live tour data and weather · Powered by Gemini via a Vercel proxy · Please confirm bookings with the Galway office.
   </footer>
 </div>
 
@@ -312,25 +312,6 @@ applyTheme((() => {
 const agent = AGENT;
 let history = [];
 let streaming = false;
-let userLocation = null;
-
-function enableLocation() {
-  if (!("geolocation" in navigator)) return;
-  try {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        userLocation = {
-          lat: Number(pos.coords.latitude.toFixed(4)),
-          lon: Number(pos.coords.longitude.toFixed(4)),
-        };
-      },
-      () => {},
-      { timeout: 8000, maximumAge: 600000 }
-    );
-  } catch {
-    /* geolocation unavailable (e.g. test env) */
-  }
-}
 
 function addSysNote(text) {
   const div = document.createElement("div");
@@ -433,7 +414,6 @@ async function sendMessage(text) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message,
-        ...(userLocation ? { location: userLocation } : {}),
         history: history.slice(0, -1)
       })
     });
@@ -496,7 +476,7 @@ $("bookBtn").addEventListener("click", () => {
   sendMessage("Hi, I'd like to book a tour — can you help me choose and check availability?");
 });
 
-/* ── Live tours from Google Sheets ────────────────────── */
+/* ── Live tours ───────────────────────────────────────── */
 let TOURS = [];
 let category = "All";
 let searchTerm = "";
@@ -550,20 +530,20 @@ const fmtPrice = (p) => (isPlausible(p) ? "€" + p.toLocaleString() : "On reque
 const fmtSlots = (s) => (s === 0 ? "Sold out this week" : s <= 3 ? `Only ${s} slot${s === 1 ? "" : "s"} this week` : `${s} slots this week`);
 
 async function loadTours() {
-  dataFoot.textContent = "Fetching live data from Google Sheets…";
+  dataFoot.textContent = "Loading live tours…";
   try {
     const res = await fetch(CONFIG.sheetUrl, { cache: "no-store" });
     if (!res.ok) throw new Error("HTTP " + res.status);
     const csv = await res.text();
     TOURS = normalize(parseCSV(csv));
-    dataFoot.textContent = "Data source: Google Sheets (live) · updated " + new Date().toLocaleTimeString();
+    dataFoot.textContent = "Live tours · refreshed automatically";
   } catch (e) {
     dataFoot.textContent = "Direct load failed — falling back to API…";
     try {
       const res = await fetch(CONFIG.apiBase + "/api/data", { cache: "no-store" });
       const json = await res.json();
       TOURS = json.tours || [];
-      dataFoot.textContent = "Data source: Vercel API → Google Sheets · updated " + new Date().toLocaleTimeString();
+      dataFoot.textContent = "Live tours · via API";
     } catch (e2) {
       dataFoot.textContent = "Could not load tour data. Please refresh.";
       tourList.innerHTML = `<div class="empty-state">Tour data unavailable.</div>`;
@@ -635,7 +615,6 @@ addSysNote("Welcome to Atlantic Coast Tours");
 addMessage("assistant", agent.opening);
 history = [{ role: "assistant", content: agent.opening }];
 loadTours();
-enableLocation();
 </script>
 </body>
 </html>
