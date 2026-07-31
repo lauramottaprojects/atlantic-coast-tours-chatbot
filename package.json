@@ -1,0 +1,13 @@
+{
+  "name": "atlantic-coast-tours-chatbot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Atlantic Coast Tours customer chatbot — GitHub Pages frontend + Vercel serverless Gemini proxy + terminal client.",
+  "type": "module",
+  "scripts": {
+    "chat": "node chat.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
