@@ -631,7 +631,7 @@ function renderTours() {
 tourSearch.addEventListener("input", () => { searchTerm = tourSearch.value; renderTours(); });
 
 /* ── Init ─────────────────────────────────────────────── */
-addSysNote("Welcome to Atlantic Coast Tours. I'm Laura, your virtual assistant — bookings, tour advice, accessibility, sustainability, custom trips and live weather are all covered here. Tour data below is loaded live from the Google Sheets database.");
+addSysNote("Welcome to Atlantic Coast Tours");
 addMessage("assistant", agent.opening);
 history = [{ role: "assistant", content: agent.opening }];
 loadTours();
