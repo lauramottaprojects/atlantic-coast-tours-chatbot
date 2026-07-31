@@ -1,5 +1,5 @@
 import { fetchTours, toursToPrompt } from "../lib/tours.mjs";
-import { buildSystemInstruction, getPersona, DEFAULT_PERSONA_ID, PERSONAS, UNIFIED_PERSONA } from "../lib/personas.mjs";
+import { buildSystemInstruction, LAURA } from "../lib/personas.mjs";
 
 export const config = { maxDuration: 60, runtime: "nodejs" };
 
@@ -56,21 +56,7 @@ export default async function handler(req, res) {
       ok: true,
       service: "Atlantic Coast Tours chatbot API",
       model: MODEL,
-      defaultMode: "unified",
-      modes: [
-        {
-          id: UNIFIED_PERSONA.id,
-          name: UNIFIED_PERSONA.name,
-          handle: UNIFIED_PERSONA.handle,
-          description: "All departments, one chat (default)",
-        },
-        ...PERSONAS.map((p) => ({
-          id: p.id,
-          name: p.name,
-          handle: p.handle,
-          description: `Specialist mode: ${p.role}`,
-        })),
-      ],
+      assistant: { id: LAURA.id, name: LAURA.name, handle: LAURA.handle, role: LAURA.role },
       dataSource: "Google Sheets (live)",
     });
     return;
@@ -95,9 +81,6 @@ export default async function handler(req, res) {
     return;
   }
 
-  const personaId = String(body.persona || DEFAULT_PERSONA_ID);
-  const persona = getPersona(personaId);
-
   let history = Array.isArray(body.history) ? body.history : [];
   history = history
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
@@ -107,10 +90,10 @@ export default async function handler(req, res) {
   let systemInstruction;
   try {
     const tours = await fetchTours();
-    systemInstruction = { parts: [{ text: buildSystemInstruction(persona.id, toursToPrompt(tours)) }] };
+    systemInstruction = { parts: [{ text: buildSystemInstruction(toursToPrompt(tours)) }] };
   } catch (err) {
     console.error("tours fetch failed:", err.message);
-    systemInstruction = { parts: [{ text: buildSystemInstruction(persona.id, "Tour database temporarily unavailable.") }] };
+    systemInstruction = { parts: [{ text: buildSystemInstruction("Tour database temporarily unavailable.") }] };
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
