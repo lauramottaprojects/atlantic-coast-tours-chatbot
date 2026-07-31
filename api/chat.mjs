@@ -1,5 +1,5 @@
 import { fetchTours, toursToPrompt } from "../lib/tours.mjs";
-import { buildSystemInstruction, getPersona, DEFAULT_PERSONA_ID, PERSONAS } from "../lib/personas.mjs";
+import { buildSystemInstruction, getPersona, DEFAULT_PERSONA_ID, PERSONAS, UNIFIED_PERSONA } from "../lib/personas.mjs";
 
 export const config = { maxDuration: 60, runtime: "nodejs" };
 
@@ -56,7 +56,21 @@ export default async function handler(req, res) {
       ok: true,
       service: "Atlantic Coast Tours chatbot API",
       model: MODEL,
-      personas: PERSONAS.map((p) => ({ id: p.id, name: p.name, handle: p.handle })),
+      defaultMode: "unified",
+      modes: [
+        {
+          id: UNIFIED_PERSONA.id,
+          name: UNIFIED_PERSONA.name,
+          handle: UNIFIED_PERSONA.handle,
+          description: "All departments, one chat (default)",
+        },
+        ...PERSONAS.map((p) => ({
+          id: p.id,
+          name: p.name,
+          handle: p.handle,
+          description: `Specialist mode: ${p.role}`,
+        })),
+      ],
       dataSource: "Google Sheets (live)",
     });
     return;
