@@ -64,16 +64,6 @@
   .brand h1 { font-size: 1.05rem; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .brand p { margin: 0; font-size: 0.78rem; color: var(--text-muted); }
   .spacer { flex: 1; }
-  .live-badge {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: 0.72rem; font-weight: 600; color: var(--success);
-    background: var(--surface-2); border: 1px solid var(--border);
-    padding: 5px 10px; border-radius: 999px; white-space: nowrap;
-  }
-  .live-badge .dot {
-    width: 8px; height: 8px; border-radius: 50%; background: var(--success);
-    animation: pulse 2s infinite;
-  }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
   .icon-btn {
     background: transparent; border: 1px solid var(--border); color: var(--text);
@@ -231,8 +221,6 @@
       </div>
     </div>
     <div class="spacer"></div>
-    <span class="live-badge" title="Tour data is loaded live from the Google Sheets database"><span class="dot"></span><span id="liveLabel">Live from Google Sheets</span></span>
-    <span class="live-badge" id="weatherBadge" title="Live weather forecasts via Open-Meteo"><span class="dot"></span>Weather · Open-Meteo</span>
     <button id="themeToggle" class="icon-btn" aria-label="Toggle dark / light mode">Dark</button>
     <button id="bookBtn" class="cta-btn">Book Now</button>
   </header>
@@ -304,7 +292,7 @@ const $ = (id) => document.getElementById(id);
 const themeToggle = $("themeToggle"), chatLog = $("chatLog"), chatForm = $("chatForm"),
       chatInput = $("chatInput"), sendBtn = $("sendBtn"), tourList = $("tourList"),
       tourSearch = $("tourSearch"), tourChips = $("tourChips"), tourCount = $("tourCount"),
-      dataFoot = $("dataFoot"), liveLabel = $("liveLabel");
+      dataFoot = $("dataFoot");
 
 /* ── Theme ────────────────────────────────────────────── */
 function applyTheme(theme) {
@@ -569,7 +557,6 @@ async function loadTours() {
     const csv = await res.text();
     TOURS = normalize(parseCSV(csv));
     dataFoot.textContent = "Data source: Google Sheets (live) · updated " + new Date().toLocaleTimeString();
-    liveLabel.textContent = "Live from Google Sheets";
   } catch (e) {
     dataFoot.textContent = "Direct load failed — falling back to API…";
     try {
