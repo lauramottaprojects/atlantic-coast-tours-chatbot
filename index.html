@@ -278,6 +278,7 @@ const CONFIG = Object.assign({
 }, window.ATLANTIC_CONFIG || {});
 
 const PERSONAS = [
+  { id: "unified", name: "Atlantic Coast Tours", short: "Team", handle: "@ACTTeam", role: "All departments, one chat", color: "#0E6E7C", opening: "Hi, I'm the Atlantic Coast Tours concierge — bookings, tour advice, accessibility, sustainability and custom trips are all covered from here. What can I help you with?" },
   { id: "fiona",  name: "Fiona",   handle: "@BookingFiona",    role: "Reservations & Booking",   color: "#0E6E7C", opening: "Hi, I'm Fiona — let's get your Wild Atlantic Way adventure booked. Which tour are you interested in, and how many travelers?" },
   { id: "cormac", name: "Cormac",  handle: "@GuideCormac",     role: "Local Guide & Itinerary",  color: "#C1622B", opening: "Ah, welcome! I'm Cormac — ask me anything about the Cliffs of Moher, the Aran Islands, or where to find the best pint of Guinness along the way." },
   { id: "niamh",  name: "Niamh",   handle: "@SupportNiamh",    role: "Support & Logistics",      color: "#7A8A3F", opening: "Hi, Niamh here — happy to help sort out any logistics or accessibility needs so your trip runs smoothly. What can I help with?" },
@@ -337,7 +338,8 @@ function renderPersonaTabs() {
     btn.style.setProperty("--tab-color", p.color);
     btn.setAttribute("role", "tab");
     btn.setAttribute("aria-selected", p.id === persona.id);
-    btn.innerHTML = `<span class="avatar">${p.name[0]}</span>${p.name} <span class="handle">${p.handle}</span>`;
+    btn.title = p.name + " " + p.handle + " — " + p.role;
+    btn.innerHTML = `<span class="avatar">${(p.short || p.name)[0]}</span>${p.short || p.name} <span class="handle">${p.handle}</span>`;
     btn.addEventListener("click", () => switchPersona(p.id));
     personaTabs.appendChild(btn);
   });
@@ -504,8 +506,7 @@ SUGGESTIONS.forEach((s) => {
 
 /* ── Book Now CTA ─────────────────────────────────────── */
 $("bookBtn").addEventListener("click", () => {
-  switchPersona("fiona", "Booking request routed to Fiona.");
-  setTimeout(() => sendMessage("Hi, I'd like to book a tour — can you help me choose and check availability?"), 50);
+  sendMessage("Hi, I'd like to book a tour — can you help me choose and check availability?");
 });
 
 /* ── Live tours from Google Sheets ────────────────────── */
@@ -635,8 +636,7 @@ function renderTours() {
       <p class="t-desc">${escapeHtml(t.description) || "…"}</p>
     `;
     card.addEventListener("click", () => {
-      switchPersona("cormac", "Tour question routed to Cormac, our local guide.");
-      setTimeout(() => sendMessage(`Tell me about the ${t.name} tour (${t.id}) — what's included and what's it like?`), 50);
+      sendMessage(`Tell me about the ${t.name} tour (${t.id}) — what's included and what's it like?`);
     });
     tourList.appendChild(card);
   });
@@ -646,7 +646,7 @@ tourSearch.addEventListener("input", () => { searchTerm = tourSearch.value; rend
 
 /* ── Init ─────────────────────────────────────────────── */
 renderPersonaTabs();
-addSysNote(`You're talking to Atlantic Coast Tours. Choose a team member above — Fiona is the default. Tour data below is loaded live from the Google Sheets database.`);
+addSysNote(`Welcome to Atlantic Coast Tours. The whole team is here in one chat — bookings, tour advice, accessibility, sustainability and custom trips. Fancy a specialist? Use the tabs on the right. Tour data below is loaded live from the Google Sheets database.`);
 addMessage("assistant", persona.opening, persona);
 history = [{ role: "assistant", content: persona.opening }];
 loadTours();
