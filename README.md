@@ -2,7 +2,7 @@
 
 A customer engagement chatbot for **Atlantic Coast Tours** (Galway, Ireland), built for the *Customer Engagement & AI (CEAI)* module.
 
-- **Web frontend (this repo, GitHub Pages):** chat with five Atlantic Coast Tours "personas", browse live tours, dark/light themes.
+- **Web frontend (this repo, GitHub Pages):** chat with **Laura**, the single Atlantic Coast Tours virtual assistant, browse live tours, dark/light themes.
 - **Terminal client:** `chat.mjs` — the same chat from the command line.
 - **Backend:** a Vercel serverless function (`api/chat.mjs`) that proxies Gemini **3.1 Flash-Lite** calls. The Gemini API key lives only in a Vercel environment variable — never in the browser or the repo.
 - **Live data:** tours are read **live from a Google Sheets database** (CSV export) on every load — no snapshot, no manual sync.
@@ -17,20 +17,9 @@ A customer engagement chatbot for **Atlantic Coast Tours** (Galway, Ireland), bu
 | Live tours JSON (GET) | https://atlantic-coast-tours-chatbot.vercel.app/api/data |
 | Tour database (Google Sheets) | [link](https://docs.google.com/spreadsheets/d/1balBGf8QhZ5dc-RCCAPt2kcrcf6m_YRh0HL_r8bBtJw) |
 
-## One team, one voice (with optional specialist mode)
+## One assistant: Laura
 
-The chat is a **single unified assistant** by default — the whole team behind one concierge, so there are no "please talk to so-and-so" hand-offs. It answers booking, tour, logistics, sustainability and custom-trip questions directly, drawing on all five specialists internally.
-
-| Persona | Handle | Specialty |
-|---|---|---|
-| Team (default) | @ACTTeam | All departments, one chat |
-| Fiona | @BookingFiona | Reservations & booking |
-| Cormac | @GuideCormac | Local guide, itinerary & storytelling |
-| Niamh | @SupportNiamh | Logistics, accessibility & support |
-| Aoibhe | @EcoAoibhe | Sustainability & responsible tourism |
-| Declan | @ConciergeDeclan | Custom & corporate trip concierge |
-
-Prefer a specialist? The tabs / `/persona` switch into **specialist mode**, where that person's full prompt (personality, scope, out-of-scope hand-offs, tone rules) applies — each person's prompt lives in `lib/personas.mjs`, all sharing one Core Facts block so answers never contradict.
+The chatbot is a **single virtual assistant named Laura** (`@Laura`). She presents herself as one person for the whole company and answers booking, tour, logistics, accessibility, sustainability and custom-trip questions directly — there are no persona tabs, no "please talk to so-and-so" hand-offs. All the specialist knowledge (reservations, local guiding, support, sustainability, concierge) is woven into her single prompt in `lib/personas.mjs`, with one shared Core Facts block so answers never contradict.
 
 ## Data integrity / prompt-injection defence
 
@@ -47,14 +36,13 @@ The live sheet deliberately contains **embedded "Note to AI" instructions** (e.g
 ```json
 {
   "message": "How much is the Aran Islands tour?",
-  "persona": "unified",
   "history": [{ "role": "assistant", "content": "…" }, { "role": "user", "content": "…" }]
 }
 ```
 
-`persona` accepts `unified` (default) or a specialist id (`fiona`, `cormac`, `niamh`, `aoibhe`, `declan`).
+The assistant is always **Laura** — no persona field needed (an old `persona` field is ignored for backwards compatibility).
 
-Responds with a plain-text stream (`text/plain; charset=utf-8`) tokenised from Gemini. CORS is open (`*`) so the GitHub Pages frontend can call it. `GET /api/chat` returns service health; `GET /api/data` returns the tours as JSON.
+Responds with a plain-text stream (`text/plain; charset=utf-8`) tokenised from Gemini. CORS is open (`*`) so the GitHub Pages frontend can call it. `GET /api/chat` returns service health (including the assistant's name/role); `GET /api/data` returns the tours as JSON.
 
 ## Run locally
 
@@ -65,7 +53,7 @@ npm install
 npm run chat          # or: node chat.mjs
 ```
 
-Commands inside the chat: `/persona <name>` `/tours` `/reset` `/help` `/quit`. Point at a different deployment with `ATLANTIC_API_BASE`.
+Commands inside the chat: `/tours` `/reset` `/help` `/quit`. Point at a different deployment with `ATLANTIC_API_BASE`.
 
 Open `index.html` locally with any static server (e.g. `npx serve .`) — it reads `config.js` for the API base and sheet URL.
 
@@ -83,12 +71,12 @@ Open `index.html` locally with any static server (e.g. `npx serve .`) — it rea
 ## Structure
 
 ```
-index.html          Web frontend (GitHub Pages) — palette, personas, live tours, streaming chat
+index.html          Web frontend (GitHub Pages) — palette, Laura (single assistant), live tours, streaming chat
 config.js           API base URL + Google Sheets URL
 chat.mjs            Terminal chat client (Node 20+, zero deps)
 api/chat.mjs        Vercel serverless function — Gemini 3.1 Flash-Lite proxy (streaming)
 api/data.mjs        Vercel serverless function — live tours JSON
-lib/personas.mjs    Unified assistant prompt, persona prompts, core facts, safety rules
+lib/personas.mjs    Laura's prompt, core facts, safety rules
 lib/tours.mjs       Google Sheets fetch, CSV parser, sanitisation, price plausibility
 vercel.json         Vercel function config
 ```
