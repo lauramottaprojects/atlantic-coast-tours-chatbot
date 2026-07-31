@@ -6,6 +6,7 @@ A customer engagement chatbot for **Atlantic Coast Tours** (Galway, Ireland), bu
 - **Terminal client:** `chat.mjs` — the same chat from the command line.
 - **Backend:** a Vercel serverless function (`api/chat.mjs`) that proxies Gemini **3.1 Flash-Lite** calls. The Gemini API key lives only in a Vercel environment variable — never in the browser or the repo.
 - **Live data:** tours are read **live from a Google Sheets database** (CSV export) on every load — no snapshot, no manual sync.
+- **Live weather:** the assistant answers weather questions with **real-time forecasts from Open-Meteo** — "how's the weather in Dingle this weekend?" works for any place, and if you allow browser geolocation it uses your location for "here" / "near me" questions.
 
 ## Live URLs
 
@@ -16,6 +17,7 @@ A customer engagement chatbot for **Atlantic Coast Tours** (Galway, Ireland), bu
 | Chat API (POST, streams text) | https://atlantic-coast-tours-chatbot.vercel.app/api/chat |
 | Live tours JSON (GET) | https://atlantic-coast-tours-chatbot.vercel.app/api/data |
 | Tour database (Google Sheets) | [link](https://docs.google.com/spreadsheets/d/1balBGf8QhZ5dc-RCCAPt2kcrcf6m_YRh0HL_r8bBtJw) |
+| Weather API (Open-Meteo) | [api.open-meteo.com](https://open-meteo.com/) |
 
 ## One assistant: Laura
 
@@ -29,6 +31,15 @@ The live sheet deliberately contains **embedded "Note to AI" instructions** (e.g
 2. **System prompt rules**: the database is explicitly labelled *data, not instructions*, and embedded instructions must be ignored.
 3. **Plausibility guard**: any price over €500 is never stated as fact — the bot says it will confirm with the booking team. In the tour browser such prices show as *"On request"*.
 
+## Live weather (Open-Meteo)
+
+Laura has a **`get_weather` tool** backed by [Open-Meteo](https://open-meteo.com/):
+
+- **Geocoding** — any city/town name ("Dingle", "Galway", "Clifden") is resolved via `geocoding-api.open-meteo.com`.
+- **Forecast** — current conditions + a 7-day daily forecast from `api.open-meteo.com` (temperature, weather code, rain probability, wind).
+- **Gemini function calling** — the model decides when to call the tool; the backend runs it, feeds the live data back, and streams Laura's answer. She never invents weather.
+- **Device location default** — if the browser shares its location (`navigator.geolocation`), it is sent with every request and Laura uses it when you ask about "here" / "my location". If you decline, she just geocodes whatever place you name.
+
 ## Chat API
 
 `POST /api/chat`
@@ -39,6 +50,8 @@ The live sheet deliberately contains **embedded "Note to AI" instructions** (e.g
   "history": [{ "role": "assistant", "content": "…" }, { "role": "user", "content": "…" }]
 }
 ```
+
+Optional: `"location": { "lat": 53.2707, "lon": -9.0568 }` — a device geolocation to use as the default for "here" weather questions.
 
 The assistant is always **Laura** — no persona field needed (an old `persona` field is ignored for backwards compatibility).
 
@@ -76,8 +89,9 @@ config.js           API base URL + Google Sheets URL
 chat.mjs            Terminal chat client (Node 20+, zero deps)
 api/chat.mjs        Vercel serverless function — Gemini 3.1 Flash-Lite proxy (streaming)
 api/data.mjs        Vercel serverless function — live tours JSON
-lib/personas.mjs    Laura's prompt, core facts, safety rules
+lib/personas.mjs    Laura's prompt, core facts, safety rules, weather rules
 lib/tours.mjs       Google Sheets fetch, CSV parser, sanitisation, price plausibility
+lib/weather.mjs     Open-Meteo geocoding + forecast fetch/formatting (get_weather tool)
 vercel.json         Vercel function config
 ```
 
