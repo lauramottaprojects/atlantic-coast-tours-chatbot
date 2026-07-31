@@ -1,6 +1,6 @@
 import { createInterface } from "node:readline";
 import { stdin as input, stdout as output } from "node:process";
-import { PERSONAS, DEFAULT_PERSONA_ID } from "./lib/personas.mjs";
+import { PERSONAS, UNIFIED_PERSONA, DEFAULT_PERSONA_ID, getPersona } from "./lib/personas.mjs";
 import { fetchTours, isPlausiblePrice } from "./lib/tours.mjs";
 
 const API_BASE = (process.env.ATLANTIC_API_BASE || "https://atlantic-coast-tours-chatbot.vercel.app").replace(/\/$/, "");
@@ -40,7 +40,7 @@ function readLine(prompt) {
 let current = null;
 
 function setPersona(id) {
-  current = PERSONAS.find((p) => p.id === id) || PERSONAS.find((p) => p.id === DEFAULT_PERSONA_ID);
+  current = getPersona(id);
 }
 
 function banner() {
@@ -51,11 +51,13 @@ function banner() {
 }
 
 function pickQuestions() {
-  console.log(`${C.bold}Choose a team member to talk to:${C.reset}`);
+  console.log(`${C.bold}Choose who you want to talk to:${C.reset}`);
+  console.log(
+    `  ${C.yellow}1${C.reset}. ${C.bold}${UNIFIED_PERSONA.short}${C.reset} ${C.dim}(${UNIFIED_PERSONA.handle})${C.reset} ${C.dim}· all departments, one chat${C.reset} ${C.yellow}(recommended)${C.reset}`
+  );
   PERSONAS.forEach((p, i) => {
-    console.log(`  ${C.yellow}${i + 1}${C.reset}. ${C.bold}${p.name}${C.reset} ${C.dim}(${p.handle})${C.reset} ${C.dim}· ${p.role}${C.reset}`);
+    console.log(`  ${C.yellow}${i + 2}${C.reset}. ${C.bold}${p.name}${C.reset} ${C.dim}(${p.handle})${C.reset} ${C.dim}· ${p.role}${C.reset}`);
   });
-  console.log(`  ${C.yellow}0${C.reset}. ${C.bold}Default — Fiona${C.reset} ${C.dim}(most common starting point)${C.reset}`);
   console.log("");
 }
 
@@ -63,10 +65,12 @@ async function main() {
   banner();
 
   pickQuestions();
-  const answer = (await readLine(`${C.bold}Persona [${PERSONAS[0].name}]:${C.reset} `)) ?? "";
+  const answer = (await readLine(`${C.bold}Mode [${UNIFIED_PERSONA.short}]:${C.reset} `)) ?? "";
   const idx = parseInt(answer.trim(), 10);
-  if (Number.isFinite(idx) && idx > 0 && idx <= PERSONAS.length) {
-    setPersona(PERSONAS[idx - 1].id);
+  if (idx === 1 || !Number.isFinite(idx)) {
+    setPersona(UNIFIED_PERSONA.id);
+  } else if (Number.isFinite(idx) && idx >= 2 && idx <= PERSONAS.length + 1) {
+    setPersona(PERSONAS[idx - 2].id);
   } else {
     setPersona(DEFAULT_PERSONA_ID);
   }
@@ -113,12 +117,22 @@ async function main() {
         return;
       case "/persona":
         if (!arg) {
-          console.log(`${C.yellow}Usage: /persona <${PERSONAS.map((p) => p.name.toLowerCase()).join("|")}>${C.reset}`);
+          console.log(
+            `${C.yellow}Usage: /persona <${["team", ...PERSONAS.map((p) => p.name.toLowerCase())].join("|")}>${C.reset}`
+          );
           return;
         }
-        const match = PERSONAS.find((p) => p.id === arg.toLowerCase() || p.name.toLowerCase() === arg.toLowerCase());
+        const key = arg.toLowerCase();
+        let match = null;
+        if (["team", "unified", "act", "concierge"].includes(key)) {
+          match = UNIFIED_PERSONA;
+        } else {
+          match = PERSONAS.find((p) => p.id === key || p.name.toLowerCase() === key);
+        }
         if (!match) {
-          console.log(`${C.red}Unknown persona "${arg}". Try one of: ${PERSONAS.map((p) => p.name).join(", ")}${C.reset}`);
+          console.log(
+            `${C.red}Unknown persona "${arg}". Try one of: team, ${PERSONAS.map((p) => p.name).join(", ")}${C.reset}`
+          );
           return;
         }
         setPersona(match.id);
