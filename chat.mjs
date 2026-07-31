@@ -1,6 +1,6 @@
 import { createInterface } from "node:readline";
 import { stdin as input, stdout as output } from "node:process";
-import { PERSONAS, UNIFIED_PERSONA, DEFAULT_PERSONA_ID, getPersona } from "./lib/personas.mjs";
+import { LAURA } from "./lib/personas.mjs";
 import { fetchTours, isPlausiblePrice } from "./lib/tours.mjs";
 
 const API_BASE = (process.env.ATLANTIC_API_BASE || "https://atlantic-coast-tours-chatbot.vercel.app").replace(/\/$/, "");
@@ -37,61 +37,33 @@ function readLine(prompt) {
   return new Promise((resolve) => waiters.push(resolve));
 }
 
-let current = null;
-
-function setPersona(id) {
-  current = getPersona(id);
-}
+const agent = LAURA;
 
 function banner() {
   console.log(`${C.bold}${C.teal}~ Atlantic Coast Tours ${C.reset}${C.dim}· Wild Atlantic Way · Galway${C.reset}`);
   console.log(`${C.dim}Gemini 3.1 Flash-Lite · live data from Google Sheets · proxied via ${API_BASE}${C.reset}`);
-  console.log(`${C.dim}Commands: /persona <name>  /tours  /reset  /help  /quit${C.reset}`);
-  console.log("");
-}
-
-function pickQuestions() {
-  console.log(`${C.bold}Choose who you want to talk to:${C.reset}`);
-  console.log(
-    `  ${C.yellow}1${C.reset}. ${C.bold}${UNIFIED_PERSONA.short}${C.reset} ${C.dim}(${UNIFIED_PERSONA.handle})${C.reset} ${C.dim}· all departments, one chat${C.reset} ${C.yellow}(recommended)${C.reset}`
-  );
-  PERSONAS.forEach((p, i) => {
-    console.log(`  ${C.yellow}${i + 2}${C.reset}. ${C.bold}${p.name}${C.reset} ${C.dim}(${p.handle})${C.reset} ${C.dim}· ${p.role}${C.reset}`);
-  });
+  console.log(`${C.dim}Commands: /tours  /reset  /help  /quit${C.reset}`);
   console.log("");
 }
 
 async function main() {
   banner();
 
-  pickQuestions();
-  const answer = (await readLine(`${C.bold}Mode [${UNIFIED_PERSONA.short}]:${C.reset} `)) ?? "";
-  const idx = parseInt(answer.trim(), 10);
-  if (idx === 1 || !Number.isFinite(idx)) {
-    setPersona(UNIFIED_PERSONA.id);
-  } else if (Number.isFinite(idx) && idx >= 2 && idx <= PERSONAS.length + 1) {
-    setPersona(PERSONAS[idx - 2].id);
-  } else {
-    setPersona(DEFAULT_PERSONA_ID);
-  }
-
-  const history = [{ role: "assistant", content: current.openingLine }];
-  console.log("");
-  console.log(`${C.green}${current.name}${C.reset} ${C.dim}${current.handle}${C.reset}`);
-  console.log(`${C.green}${current.openingLine}${C.reset}`);
+  const history = [{ role: "assistant", content: agent.openingLine }];
+  console.log(`${C.green}${agent.name}${C.reset} ${C.dim}· ${agent.role}${C.reset}`);
+  console.log(`${C.green}${agent.openingLine}${C.reset}`);
   console.log(`${C.dim}──────────────────────────────────────────${C.reset}`);
 
   async function handleCommand(cmd, arg) {
     switch (cmd) {
       case "/help":
-        console.log(`${C.dim}/persona <name> — switch team member (resets chat)`);
         console.log(`${C.dim}/tours — list live tours from the Google Sheets database`);
         console.log(`${C.dim}/reset — clear conversation history`);
         console.log(`${C.dim}/quit — exit${C.reset}`);
         return;
       case "/reset":
         history.length = 0;
-        history.push({ role: "assistant", content: current.openingLine });
+        history.push({ role: "assistant", content: agent.openingLine });
         console.log(`${C.yellow}Conversation reset.${C.reset}`);
         return;
       case "/tours":
@@ -115,32 +87,6 @@ async function main() {
         rl.close();
         process.exit(0);
         return;
-      case "/persona":
-        if (!arg) {
-          console.log(
-            `${C.yellow}Usage: /persona <${["team", ...PERSONAS.map((p) => p.name.toLowerCase())].join("|")}>${C.reset}`
-          );
-          return;
-        }
-        const key = arg.toLowerCase();
-        let match = null;
-        if (["team", "unified", "act", "concierge"].includes(key)) {
-          match = UNIFIED_PERSONA;
-        } else {
-          match = PERSONAS.find((p) => p.id === key || p.name.toLowerCase() === key);
-        }
-        if (!match) {
-          console.log(
-            `${C.red}Unknown persona "${arg}". Try one of: team, ${PERSONAS.map((p) => p.name).join(", ")}${C.reset}`
-          );
-          return;
-        }
-        setPersona(match.id);
-        history.length = 0;
-        history.push({ role: "assistant", content: current.openingLine });
-        console.log(`${C.green}Now talking to ${current.name} ${current.handle}.${C.reset}`);
-        console.log(`${C.green}${current.openingLine}${C.reset}`);
-        return;
       default:
         console.log(`${C.yellow}Unknown command "${cmd}". Type /help for commands.${C.reset}`);
     }
@@ -148,14 +94,13 @@ async function main() {
 
   async function send(message) {
     history.push({ role: "user", content: message });
-    process.stdout.write(`${C.teal}${current.name}${C.reset} ${C.dim}· · ·${C.reset} `);
+    process.stdout.write(`${C.teal}${agent.name}${C.reset} ${C.dim}· · ·${C.reset} `);
     try {
       const res = await fetch(`${API_BASE}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message,
-          persona: current.id,
           history: history.slice(0, -1),
         }),
       });
